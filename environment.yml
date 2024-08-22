@@ -1,0 +1,17 @@
+name: sloppymerase
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python >=3.10
+  - pysam=0.22.*
+  - dnaio=1.2.*
+  - pyfaidx
+  - pytest
+  - bedtools
+  - minimap2
+  - samtools=1.20.*
+  - strobealign=0.13.*
+  - snakemake-minimal>=8
+  - snakemake-executor-plugin-slurm
