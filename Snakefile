@@ -2,7 +2,7 @@ from glob import glob
 
 configfile: "breaks.yaml"
 
-localrules: symlink_pacbio, index_bed, sort_bed, bgzip_bed, subtract_illumina_controls
+localrules: index_bed, sort_bed, bgzip_bed, subtract_illumina_controls
 
 
 REF = "ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
@@ -66,11 +66,18 @@ rule map_nanopore:
         "mv {output.bam}.tmp.bam {output.bam}; "
         "rm ${{fastq}}"
 
-rule symlink_pacbio:
-    # TODO we may want to re-map instead
+rule map_pacbio:
     output: bam="pacbio/{name}.bam"
-    input: "raw/pacbio/{name}.mapped.bam"
-    shell: "ln -rs {input} {output}"
+    input:
+        ref=REF,
+        fastq="raw/pacbio/{name}.ccsreads.fastq.gz",
+    log:
+        bam="pacbio/{name}.bam.log",
+        sort="pacbio/{name}.bam.sort.log",
+    shell:
+        "minimap2 -ax map-hifi -t {threads} {input.ref} {input.fastq} 2> {log.bam} "
+        "| samtools sort -@ 4 -o {output.bam}.tmp.bam 2> {log.sort}; "
+        "mv -v {output.bam}.tmp.bam {output.bam}"
 
 rule detect_breaks:
     output: bed=temp("{tech}/{name}.unsorted.bed")
