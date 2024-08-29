@@ -165,6 +165,7 @@ def run(
 
         print("#gffTags")
         for record in af.fetch(region=region):
+            # Filter alignments
             if record.is_secondary or record.is_supplementary or record.is_unmapped:
                 continue
             stats.unfiltered_records += 1
@@ -186,23 +187,25 @@ def run(
                 stats.filtered_max_error_rate += 1
                 continue
 
-            for revcomp in (False, True):
-                events = list(detect_break(record, reference_sequence, revcomp))
-                stats.event_counts[min(len(events), 2)] += 1
+            # Detect breaks on forward and reverse strand
+            events = list(detect_break(record, reference_sequence, revcomp=False))
+            events.extend(detect_break(record, reference_sequence, revcomp=True))
+            stats.event_counts[min(len(events), 2)] += 1
 
-                for event in events:
-                    stats.unfiltered_events += 1
-                    if event.count < min_affected:
-                        stats.filtered_min_affected += 1
-                        continue
-                    if event.count_mismatches() < min_mismatches:
-                        stats.filtered_min_mismatches += 1
-                        continue
-                    if mean([bq for bq in event.base_qualities if bq is not None]) < min_base_quality:
-                        stats.filtered_min_base_quality += 1
-                        continue
-                    stats.events += 1
-                    print(event.bed_record(error_rate))
+            # Filter events and print BED records for those that remain
+            for event in events:
+                stats.unfiltered_events += 1
+                if event.count < min_affected:
+                    stats.filtered_min_affected += 1
+                    continue
+                if event.count_mismatches() < min_mismatches:
+                    stats.filtered_min_mismatches += 1
+                    continue
+                if mean([bq for bq in event.base_qualities if bq is not None]) < min_base_quality:
+                    stats.filtered_min_base_quality += 1
+                    continue
+                stats.events += 1
+                print(event.bed_record(error_rate))
             stats.records += 1
 
     def log(n, *args, **kwargs):
