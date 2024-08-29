@@ -18,9 +18,14 @@ import sys
 import argparse
 from dataclasses import dataclass
 from typing import Iterator
+import time
 
 import pysam
 from pyfaidx import Fasta
+
+
+# Time interval in seconds between log messages printing how many records have been processed
+UPDATE_INTERVAL = 60
 
 
 class CommandlineError(Exception):
@@ -162,9 +167,16 @@ def run(
         pysam.AlignmentFile(bam) as af,
     ):
         stats = Statistics()
-
+        start_time = time.time()
+        next_update = start_time + UPDATE_INTERVAL
+        stderr_is_a_tty = sys.stderr.isatty()
         print("#gffTags")
-        for record in af.fetch(region=region):
+        for n, record in enumerate(af.fetch(region=region)):
+            if stderr_is_a_tty and n % 1000 == 0 and (now := time.time()) >= next_update:
+                rate = n / (now - start_time)
+                print(f"Processed {n} alignment records in {now - start_time:.1f} s at {rate:.0f} records/s", file=sys.stderr)
+                next_update += UPDATE_INTERVAL
+
             # Filter alignments
             if record.is_secondary or record.is_supplementary or record.is_unmapped:
                 continue
@@ -207,6 +219,11 @@ def run(
                 stats.events += 1
                 print(event.bed_record(error_rate))
             stats.records += 1
+
+        # Final rate update
+        now = time.time()
+        rate = n / (now - start_time)
+        print(f"Done. Processed {n} alignment records in {now - start_time:.1f} s at {rate:.0f} records/s", file=sys.stderr)
 
     def log(n, *args, **kwargs):
         print(f"{n:7}", *args, **kwargs, file=sys.stderr)
