@@ -7,14 +7,27 @@ localrules: index_bed, sort_bed, bgzip_bed, subtract_illumina_controls
 
 REF = "ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
 
-DATASETS = [f"illumina/TK-2746-{i}.filtered" for i in range(3, 9)] + \
+DATASETS = [f"illumina/TK-2746-{i}" for i in range(3, 9)] + \
     [f"nanopore/barcode{i:02d}" for i in range(1, 11)] + \
     [f"pacbio/ps_396_00{i}" for i in (1, 2)]
 
 
 rule:
     input:
-        [f"{ds}.bed.gz.tbi" for ds in DATASETS]
+        [f"illumina/TK-2746-{i}.filtered.bed.gz.tbi" for i in range(3, 9)] + \
+        [f"{ds}.bed.gz.tbi" for ds in DATASETS] + \
+        [f"stats/readcounts/{ds}.txt" for ds in DATASETS]
+
+
+rule count_illumina_reads:
+    output:
+        txt="stats/readcounts/illumina/{name}.txt"
+    input:
+        fastq="raw/illumina/{name}_R1.fastq.gz",
+    shell:
+        "n=$(igzip -dc < {input.fastq} | wc -l); "
+        "echo $((n/4)) > {output.txt}"
+
 
 rule map_illumina:
     output: bam="illumina/{name}.bam"
@@ -47,11 +60,24 @@ def natural_sort_key(s, _nsre=re.compile('([0-9]+)')):
         for text in re.split(_nsre, s)]
 
 
+def nanopore_fastqs(wildcards):
+    return sorted(glob(f"raw/nanopore/{wildcards.name}/*.fastq.gz"), key=natural_sort_key)
+
+
+rule count_nanopore_pacbio_reads:
+    output:
+        txt="stats/readcounts/{tech,(nanopore|pacbio)}/{name}.txt"
+    input:
+        bam="{tech}/{name}.bam"
+    shell:
+        "samtools view -F 0x900 -c {input.bam} > {output.txt}"
+
+
 rule map_nanopore:
     output: bam="nanopore/{name}.bam"
     input:
         ref=REF,
-        fastq=lambda wildcards: sorted(glob(f"raw/nanopore/{wildcards.name}/*.fastq.gz"), key=natural_sort_key)
+        fastq=nanopore_fastqs
     log:
         bam="nanopore/{name}.bam.log",
         sort="nanopore/{name}.bam.sort.log",
