@@ -80,6 +80,7 @@ class Statistics:
     def __init__(self):
         # Record statistics
         self.unfiltered_records: int = 0
+        self.filtered_not_primary: int = 0
         self.filtered_min_passes: int = 0
         self.filtered_max_error_rate: int = 0
         self.records: int = 0
@@ -179,8 +180,8 @@ def run(
 
             # Filter alignments
             if record.is_secondary or record.is_supplementary or record.is_unmapped:
+                stats.filtered_not_primary += 1
                 continue
-            stats.unfiltered_records += 1
             if (
                 min_passes is not None
                 and record.has_tag("np")
@@ -219,6 +220,7 @@ def run(
                 stats.events += 1
                 print(event.bed_record(error_rate))
             stats.records += 1
+        stats.unfiltered_records = n
 
         # Final rate update
         now = time.time()
@@ -234,15 +236,16 @@ def run(
     print("Discarding events with fewer than", min_mismatches, "mismatching bases", file=sys.stderr)
 
     print(file=sys.stderr)
-    log(stats.unfiltered_records, "reads (alignments) in input file")
-    log(stats.filtered_min_passes, "reads with too few passes (np tag) filtered out")
-    log(stats.filtered_max_error_rate, "reads with too high error rate filtered out")
-    log(stats.records, "reads remained after filtering and were analyzed for events")
+    log(stats.unfiltered_records, "total alignments in input file")
+    log(stats.filtered_not_primary, "non-primary alignments filtered out")
+    log(stats.filtered_min_passes, "alignments with too few passes (np tag) filtered out")
+    log(stats.filtered_max_error_rate, "alignments with too high error rate filtered out")
+    log(stats.records, "alignments remained after filtering and were analyzed for events")
 
     print(file=sys.stderr)
-    log(stats.event_counts[0], "reads had no event")
-    log(stats.event_counts[1], "reads had one event")
-    log(stats.event_counts[2], "reads had two or more events")
+    log(stats.event_counts[0], "alignments had no event")
+    log(stats.event_counts[1], "alignments had one event")
+    log(stats.event_counts[2], "alignments had two or more events")
 
     print(file=sys.stderr)
     log(stats.unfiltered_events, "events found")
