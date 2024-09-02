@@ -173,7 +173,13 @@ def run(
         fasta = stack.enter_context(Fasta(ref))
         af = pysam.AlignmentFile(bam)
         if output_bam is not None:
-            output_alignments = stack.enter_context(pysam.AlignmentFile(output_bam, "w", template=af))
+            if output_bam.endswith(".bam"):
+                mode = "wb"
+            elif output_bam.endswith(".cram"):
+                mode = "wc"
+            else:
+                mode = "w"
+            output_alignments = stack.enter_context(pysam.AlignmentFile(output_bam, mode=mode, template=af))
         else:
             output_alignments = None
         stats = Statistics()

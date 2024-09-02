@@ -123,7 +123,7 @@ rule detect_breaks:
         " --min-mismatches={params.conf[min_mismatches]}"
         " {input.ref}"
         " {input.bam}"
-        " > {output}.tmp"
+        " > {output.bed}.tmp"
         " 2> {log}"
         " && mv {output.bed}.tmp {output.bed}"
 
