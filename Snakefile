@@ -106,7 +106,9 @@ rule map_pacbio:
         "mv -v {output.bam}.tmp.bam {output.bam}"
 
 rule detect_breaks:
-    output: bed=temp("{tech}/{name}.unsorted.bed")
+    output:
+        bed=temp("{tech}/{name}.unsorted.bed"),
+        bam="{tech}/{name}.events.bam",
     input:
         bam="{tech}/{name}.bam",
         bai="{tech}/{name}.bam.bai",
@@ -116,6 +118,7 @@ rule detect_breaks:
         conf=lambda wildcards: config[wildcards.tech]
     shell:
         "python detectbreak.py"
+        " --output-bam={output.bam}"
         " --min-affected={params.conf[min_affected]}"
         " --min-mismatches={params.conf[min_mismatches]}"
         " {input.ref}"

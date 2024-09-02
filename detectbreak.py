@@ -16,6 +16,7 @@ annotations when hovering with the mouse over an annotated event.
 # ///
 import sys
 import argparse
+from contextlib import ExitStack
 from dataclasses import dataclass
 from typing import Iterator
 import time
@@ -102,6 +103,10 @@ def main():
         help="Only work on reads within this region",
     )
     parser.add_argument(
+        "--output-bam", metavar="PATH",
+        help="Write alignments on which events were detected to PATH"
+    )
+    parser.add_argument(
         "--min-passes",
         metavar="N",
         type=int,
@@ -148,6 +153,7 @@ def main():
 def run(
     ref: str,
     bam: str,
+    output_bam: str | None,
     region: str | None,
     min_passes: int | None,
     max_error_rate: float | None,
@@ -163,10 +169,13 @@ def run(
                 f"file '{ref}' does not appear to be a FASTA file "
                 f"as it does not start with the character '>'."
             )
-    with (
-        Fasta(ref) as fasta,
-        pysam.AlignmentFile(bam) as af,
-    ):
+    with ExitStack() as stack:
+        fasta = stack.enter_context(Fasta(ref))
+        af = pysam.AlignmentFile(bam)
+        if output_bam is not None:
+            output_alignments = stack.enter_context(pysam.AlignmentFile(output_bam, "w", template=af))
+        else:
+            output_alignments = None
         stats = Statistics()
         start_time = time.time()
         next_update = start_time + UPDATE_INTERVAL
@@ -206,6 +215,7 @@ def run(
             stats.event_counts[min(len(events), 2)] += 1
 
             # Filter events and print BED records for those that remain
+            written_events = 0
             for event in events:
                 stats.unfiltered_events += 1
                 if event.count < min_affected:
@@ -217,8 +227,11 @@ def run(
                 if mean([bq for bq in event.base_qualities if bq is not None]) < min_base_quality:
                     stats.filtered_min_base_quality += 1
                     continue
-                stats.events += 1
+                written_events += 1
                 print(event.bed_record(error_rate))
+            if written_events > 0 and output_alignments is not None:
+                output_alignments.write(record)
+            stats.events += written_events
             stats.records += 1
         stats.unfiltered_records = n
 
