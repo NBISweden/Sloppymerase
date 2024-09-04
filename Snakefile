@@ -18,7 +18,6 @@ rule:
         [f"{ds}.bed.gz.tbi" for ds in DATASETS] + \
         [f"stats/readcounts/{ds}.txt" for ds in DATASETS]
 
-
 rule count_illumina_reads:
     output:
         txt="stats/readcounts/illumina/{name}.txt"
@@ -27,7 +26,6 @@ rule count_illumina_reads:
     shell:
         "n=$(igzip -dc < {input.fastq} | wc -l); "
         "echo $((n/4)) > {output.txt}"
-
 
 rule map_illumina:
     output: bam="illumina/{name}.bam"
@@ -45,25 +43,6 @@ rule map_illumina:
         "| samtools sort -@ 4 -o {output.bam}.tmp.bam 2> {log.sort}"
         " && mv {output.bam}.tmp.bam {output.bam}"
 
-
-def natural_sort_key(s, _nsre=re.compile('([0-9]+)')):
-    """
-    Use this function as sorting key to sort in 'natural' order.
-
-    >>> names = ['file10', 'file1.5', 'file1']
-    >>> sorted(names, key=natural_sort_key)
-    ['file1', 'file1.5', 'file10']
-
-    Source: http://stackoverflow.com/a/16090640/715090
-    """
-    return [int(text) if text.isdigit() else text.lower()
-        for text in re.split(_nsre, s)]
-
-
-def nanopore_fastqs(wildcards):
-    return sorted(glob(f"raw/nanopore/{wildcards.name}/*.fastq.gz"), key=natural_sort_key)
-
-
 rule count_nanopore_pacbio_reads:
     output:
         txt="stats/readcounts/{tech,(nanopore|pacbio)}/{name}.txt"
@@ -72,25 +51,19 @@ rule count_nanopore_pacbio_reads:
     shell:
         "samtools view -F 0x900 -c {input.bam} > {output.txt}"
 
-
 rule map_nanopore:
     output: bam="nanopore/{name}.bam"
     input:
         ref=REF,
-        fastq=nanopore_fastqs
+        fastq="raw/nanopore/PAQ84731_pass_{name}_cb6fa65f_ac75ad6b.fastq.gz",
     log:
         bam="nanopore/{name}.bam.log",
         sort="nanopore/{name}.bam.sort.log",
     threads: 20
     shell:
-        "fastq=nanopore/{wildcards.name}.fastq; "
-        "rm -f ${{fastq}}; "
-        "mkfifo ${{fastq}}; "
-        "zcat {input.fastq} > ${{fastq}} &"
-        "minimap2 -ax map-ont -t {threads} {input.ref} ${{fastq}} 2> {log.bam}"
+        "minimap2 -ax map-ont -t {threads} {input.ref} {input.fastq} 2> {log.bam} "
         "| samtools sort -@ 4 -o {output.bam}.tmp.bam 2> {log.sort}; "
-        "mv {output.bam}.tmp.bam {output.bam}; "
-        "rm ${{fastq}}"
+        "mv {output.bam}.tmp.bam {output.bam}"
 
 rule map_pacbio:
     output: bam="pacbio/{name}.bam"
