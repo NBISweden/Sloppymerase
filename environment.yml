@@ -10,7 +10,7 @@ dependencies:
   - pyfaidx
   - pytest
   - bedtools
-  - minimap2
+  - minimap2>2.28
   - samtools=1.20.*
   - strobealign=0.13.*
   - snakemake-minimal>=8
