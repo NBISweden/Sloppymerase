@@ -7,8 +7,9 @@ localrules: index_bed, sort_bed, bgzip_bed, subtract_illumina_controls
 
 REF = "ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
 
+# barcode05, barcode06 are from mouse cell lines
 DATASETS = [f"illumina/TK-2746-{i}" for i in range(3, 9)] + \
-    [f"nanopore/barcode{i:02d}" for i in range(1, 11)] + \
+    [f"nanopore/barcode{i:02d}" for i in [1, 2, 3, 4, 7, 8, 9, 10]] + \
     [f"pacbio/ps_396_00{i}" for i in (1, 2)]
 
 
