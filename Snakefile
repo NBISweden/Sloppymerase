@@ -8,7 +8,7 @@ localrules: index_bed, sort_bed, bgzip_bed, subtract_illumina_controls
 REF = "ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
 
 # barcode05, barcode06 are from mouse cell lines
-DATASETS = [f"illumina/TK-2746-{i}" for i in range(3, 9)] + \
+DATASETS = [f"illumina/TK-2746-{i}" for i in range(1, 9)] + \
     [f"nanopore/barcode{i:02d}" for i in [1, 2, 3, 4, 7, 8, 9, 10]] + \
     [f"pacbio/ps_396_00{i}" for i in (1, 2)]
 
@@ -17,7 +17,8 @@ rule:
     input:
         [f"illumina/TK-2746-{i}.filtered.bed.gz.tbi" for i in range(3, 9)] + \
         [f"{ds}.bed.gz.tbi" for ds in DATASETS] + \
-        [f"stats/readcounts/{ds}.txt" for ds in DATASETS]
+        [f"stats/readcounts/{ds}.txt" for ds in DATASETS] + \
+        [f"{ds}.nickase-intersected.bed" for ds in DATASETS]
 
 rule count_illumina_reads:
     output:
@@ -122,6 +123,28 @@ rule subtract_illumina_controls:
         "bedtools subtract -A -header -a {output.bed}.tmp1.bed -b {input.control2} > {output.bed}.tmp2.bed; "
         "rm {output.bed}.tmp1.bed; "
         "mv {output.bed}.tmp2.bed {output.bed}"
+
+rule simulate_nickase:
+    output:
+        bed="nickase-sites.bed.gz"
+    input:
+        ref=REF
+    params:
+        script=Path(workflow.basedir) / "simulate_nickase.py"
+    shell:
+        "( python {params.script} {input.ref} && python3 {params.script} --rc {input.ref} )"
+        " | sort -k1,1 -k2,2n -u"
+        " | bgzip"
+        " > {output.bed}"
+
+rule intersect_nickase_sites:
+    output:
+        bed="{tech,(pacbio|illumina|nanopore)}/{name}.nickase-intersected.bed",
+    input:
+        detected_bed="{tech}/{name}.bed.gz",
+        nickase_bed="nickase-sites.bed.gz",
+    shell:
+        "bedtools window -u -w 10 -header -a {input.detected_bed} -b {input.nickase_bed} > {output.bed}"
 
 rule index_bed:
     output: tbi="{name}.bed.gz.tbi"
