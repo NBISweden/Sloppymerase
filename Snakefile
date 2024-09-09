@@ -18,7 +18,8 @@ rule:
         [f"illumina/TK-2746-{i}.filtered.bed.gz.tbi" for i in range(3, 9)] + \
         [f"{ds}.bed.gz.tbi" for ds in DATASETS] + \
         [f"stats/readcounts/{ds}.txt" for ds in DATASETS] + \
-        [f"{ds}.nickase-intersected.bed" for ds in DATASETS]
+        [f"{ds}.nickase-intersected.bed" for ds in DATASETS] + \
+        [f"{ds}.random-intersected.bed" for ds in DATASETS]
 
 rule count_illumina_reads:
     output:
@@ -137,12 +138,33 @@ rule simulate_nickase:
         " | bgzip"
         " > {output.bed}"
 
+rule random_sites:
+    output:
+        bed="random-sites.bed.gz"
+    input:
+        ref=REF
+    params:
+        script=Path(workflow.basedir) / "random_sites.py"
+    shell:
+        "python {params.script} {input.ref}"
+        " | bgzip"
+        " > {output.bed}"
+
 rule intersect_nickase_sites:
     output:
         bed="{tech,(pacbio|illumina|nanopore)}/{name}.nickase-intersected.bed",
     input:
         detected_bed="{tech}/{name}.bed.gz",
         nickase_bed="nickase-sites.bed.gz",
+    shell:
+        "bedtools window -u -w 10 -header -a {input.detected_bed} -b {input.nickase_bed} > {output.bed}"
+
+rule intersect_random_sites:
+    output:
+        bed="{tech,(pacbio|illumina|nanopore)}/{name}.random-intersected.bed",
+    input:
+        detected_bed="{tech}/{name}.bed.gz",
+        nickase_bed="random-sites.bed.gz",
     shell:
         "bedtools window -u -w 10 -header -a {input.detected_bed} -b {input.nickase_bed} > {output.bed}"
 
