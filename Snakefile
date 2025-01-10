@@ -2,7 +2,7 @@ from glob import glob
 
 configfile: "breaks.yaml"
 
-localrules: index_bed, sort_bed, bgzip_bed, subtract_illumina_controls
+localrules: index_bed, sort_uniq_bed, usable_alignments, count_unique_events, bgzip_bed, subtract_illumina_controls
 
 
 REF = "ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
@@ -15,17 +15,17 @@ DATASETS = [f"illumina/TK-2746-{i}" for i in range(1, 9)] + \
 
 rule:
     input:
+        ["stats/stats.tsv"] + \
         [f"illumina/TK-2746-{i}.filtered.bed.gz.tbi" for i in range(3, 9)] + \
         [f"{ds}.bed.gz.tbi" for ds in DATASETS] + \
-        [f"stats/readcounts/{ds}.txt" for ds in DATASETS] + \
         [f"{ds}.nickase-intersected.bed" for ds in DATASETS] + \
         [f"{ds}.random-intersected.bed" for ds in DATASETS]
 
 rule count_illumina_reads:
     output:
-        txt="stats/readcounts/illumina/{name}.txt"
+        txt="stats/readcounts/{name}.txt"
     input:
-        fastq="raw/illumina/{name}_R1.fastq.gz",
+        fastq="raw/{name}_R1.fastq.gz",
     shell:
         "n=$(igzip -dc < {input.fastq} | wc -l); "
         "echo $((n/4)) > {output.txt}"
@@ -103,7 +103,19 @@ rule detect_breaks:
         " 2> {log}"
         " && mv {output.bed}.tmp {output.bed}"
 
-rule sort_bed:
+rule usable_alignments:
+    output: txt="stats/usable/{name}.txt"
+    input: "{name}.breaks.log"
+    shell:
+        "awk '/alignments remained/ {{print $1}}' {input} > {output}"
+
+rule nonunique_events:
+    output: txt="stats/events/{name}.txt"
+    input: "{name}.breaks.log"
+    shell:
+        "awk '/events reported/ {{print $1}}' {input} > {output}"
+
+rule sort_uniq_bed:
     output: bed="{name}.bed.gz"
     input: bed="{name}.unsorted.bed"
     shell:
@@ -112,6 +124,12 @@ rule sort_bed:
         ")"
         " | bgzip > {output.bed}.tmp"
         " && mv {output.bed}.tmp {output.bed}"
+
+rule count_unique_events:
+    output: txt="stats/unique-events/{name}.txt"
+    input: rules.sort_uniq_bed.output.bed
+    shell:
+        "zcat {input} | wc -l > {output}"
 
 rule subtract_illumina_controls:
     output: bed=temp("illumina/{name}.filtered.bed")
@@ -167,6 +185,29 @@ rule intersect_random_sites:
         nickase_bed="random-sites.bed.gz",
     shell:
         "bedtools window -u -w 10 -header -a {input.detected_bed} -b {input.nickase_bed} > {output.bed}"
+
+rule count_intersected:
+    output: txt="stats/{what,(nickase|random)}-intersected/{name}.txt"
+    input: bed="{name}.{what}-intersected.bed"
+    shell:
+        "wc -l < {input} > {output}"
+
+rule stats:
+    output:
+        tsv="stats/stats.tsv"
+    input:
+        readcount=expand("stats/{what}/{ds}.txt", ds=DATASETS, what=("readcounts", "events", "unique-events", "usable", "nickase-intersected", "random-intersected"))
+    run:
+        with open(output.tsv, "w") as f:
+            print("library", "read_count", "usable", "events", "unique_events", "nickase_intersected", "random_intersected", sep="\t", file=f)
+            for ds in DATASETS:
+                count = int(Path(f"stats/readcounts/{ds}.txt").read_text())
+                usable = int(Path(f"stats/usable/{ds}.txt").read_text())
+                events = int(Path(f"stats/events/{ds}.txt").read_text())
+                unique_events = int(Path(f"stats/unique-events/{ds}.txt").read_text())
+                nickase_intersected = int(Path(f"stats/nickase-intersected/{ds}.txt").read_text())
+                random_intersected = int(Path(f"stats/random-intersected/{ds}.txt").read_text())
+                print(ds, count, usable, events, unique_events, nickase_intersected, random_intersected, sep="\t", file=f)
 
 rule index_bed:
     output: tbi="{name}.bed.gz.tbi"
