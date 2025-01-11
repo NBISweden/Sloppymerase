@@ -38,7 +38,6 @@ class CommandlineError(Exception):
 class BreakEvent:
     start: int  # position of first mutated base (reference coordinate)
     end: int  # position of last mutated base
-    count: int  # number of mutated bases
     start_unmodified: int  # position of last unmodified base preceding first modified base
     end_unmodified: int  # position of first unmodified base following last modified base
     record: pysam.AlignedSegment
@@ -75,7 +74,11 @@ class BreakEvent:
         return f"{self.record.reference_name}\t{start}\t{end}\t{formatted_tags}"
 
     def count_mismatches(self) -> int:
-        return self.count - self.query_bases.count(None)
+        return len(self.query_bases) - self.query_bases.count(None)
+
+    @property
+    def count(self) -> int:
+        return len(self.query_bases)
 
 
 class Statistics:
@@ -311,7 +314,6 @@ def detect_break(
                 event = BreakEvent(
                     start=ref_pos,
                     end=ref_pos + 1,
-                    count=1,
                     start_unmodified=prev_position,
                     end_unmodified=record.reference_end,  # fixed later
                     record=record,
@@ -323,7 +325,6 @@ def detect_break(
             if cur_mutated:
                 # Extend detected region
                 event.end = ref_pos + 1
-                event.count += 1
                 event.query_bases.append(query_base)
                 event.base_qualities.append(base_quality)
             else:
