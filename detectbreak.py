@@ -210,7 +210,11 @@ def run(
             contig_sequence = get_contig_sequence(fasta, record.reference_name)
             reference_sequence = contig_sequence[record.reference_start:record.reference_end]
 
-            errors = len(alignment_error_tuples(record, reference_sequence))
+            try:
+                errors = record.get_tag("NM")
+            except KeyError:
+                errors = len(alignment_error_tuples(record, reference_sequence))
+
             error_rate = errors / len(reference_sequence)
             if max_error_rate is not None and error_rate > max_error_rate:
                 stats.filtered_max_error_rate += 1
