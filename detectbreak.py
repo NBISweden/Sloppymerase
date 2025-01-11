@@ -16,6 +16,7 @@ annotations when hovering with the mouse over an annotated event.
 # ///
 import sys
 import argparse
+import functools
 from contextlib import ExitStack
 from dataclasses import dataclass
 from typing import Iterator
@@ -187,6 +188,7 @@ def run(
         next_update = start_time + UPDATE_INTERVAL
         stderr_is_a_tty = sys.stderr.isatty()
         print("#gffTags")
+
         for n, record in enumerate(af.fetch(region=region)):
             if stderr_is_a_tty and n % 1000 == 0 and (now := time.time()) >= next_update:
                 rate = n / (now - start_time)
@@ -205,10 +207,9 @@ def run(
                 stats.filtered_min_passes += 1
                 continue
 
-            ref_record = fasta[record.reference_name]
-            reference_sequence = ref_record[
-                record.reference_start : record.reference_end
-            ].seq.upper()
+            contig_sequence = get_contig_sequence(fasta, record.reference_name)
+            reference_sequence = contig_sequence[record.reference_start:record.reference_end]
+
             errors = len(alignment_error_tuples(record, reference_sequence))
             error_rate = errors / len(reference_sequence)
             if max_error_rate is not None and error_rate > max_error_rate:
@@ -274,6 +275,11 @@ def run(
     log(stats.events, "events reported after filtering")
 
 
+@functools.lru_cache(maxsize=2)
+def get_contig_sequence(fasta, contig_name):
+    return fasta[contig_name][:].seq.upper()
+
+
 def detect_break(
     record: pysam.AlignedSegment, reference_sequence: str, revcomp: bool
 ) -> Iterator[BreakEvent]:
@@ -333,8 +339,9 @@ def alignment_error_tuples(
 ) -> list[tuple[int, int, str, str]]:
     """
     Similar to get_aligned_pairs(), but excludes soft-clipped positions and
-    positions where query and reference are identical, and returns a tuple
-    (query_pos, ref_pos, query_base, ref_base)
+    positions where query and reference are identical.
+
+    Return a list of tuples (query_pos, ref_pos, query_base, ref_base).
     """
     result = []
     for query_pos, ref_pos in aligned_pairs_without_softclips(record):
