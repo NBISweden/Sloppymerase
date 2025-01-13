@@ -96,7 +96,8 @@ class Statistics:
         self.events: int = 0  # Final number of events
         self.filtered_min_affected: int = 0
         self.filtered_min_mismatches: int = 0
-        self.filtered_min_base_quality: int = 0
+        self.filtered_min_quality: int = 0
+        self.filtered_min_average_quality: int = 0
 
 
 def main():
@@ -141,12 +142,20 @@ def main():
         help="Require at least N mismatching (not deleted) bases",
     )
     parser.add_argument(
-        "--min-base-quality",
+        "--min-average-quality",
         "-b",
         metavar="QUAL",
-        type=float,
+        type=int,
         default=10,
         help="Require at least QUAL average base quality for mismatching bases",
+    )
+    parser.add_argument(
+        "--min-base-quality",
+        "-q",
+        metavar="QUAL",
+        type=int,
+        default=10,
+        help="Require at least QUAL base quality for all mismatching bases",
     )
     parser.add_argument("ref", metavar="fasta", help="Indexed reference FASTA")
     parser.add_argument("bam")
@@ -163,7 +172,8 @@ def run(
     max_error_rate: float | None,
     min_affected: int,
     min_mismatches: int,
-    min_base_quality: float,
+    min_average_quality: int,
+    min_base_quality: int,
 ):
     if min_mismatches > min_affected:
         raise CommandlineError("--min-mismatches must not be larger than --min-affected")
@@ -238,8 +248,11 @@ def run(
                 if event.count_mismatches() < min_mismatches:
                     stats.filtered_min_mismatches += 1
                     continue
-                if mean([bq for bq in event.base_qualities if bq is not None]) < min_base_quality:
-                    stats.filtered_min_base_quality += 1
+                if any([bq < min_base_quality for bq in event.base_qualities if bq is not None]):
+                    stats.filtered_min_quality += 1
+                    continue
+                if mean([bq for bq in event.base_qualities if bq is not None]) < min_average_quality:
+                    stats.filtered_min_average_quality += 1
                     continue
                 written_events += 1
                 print(event.bed_record(error_rate))
@@ -278,7 +291,8 @@ def run(
     log(stats.unfiltered_events, "events found")
     log(stats.filtered_min_affected, "events filtered because they had too few consecutive affected bases")
     log(stats.filtered_min_mismatches, "events filtered because they had too many deletions")
-    log(stats.filtered_min_base_quality, "events filtered because they had too low average base quality")
+    log(stats.filtered_min_quality, "events filtered because at least one base had too low quality")
+    log(stats.filtered_min_average_quality, "events filtered because they had too low average base quality")
     log(stats.events, "events reported after filtering")
 
 
