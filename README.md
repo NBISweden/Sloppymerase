@@ -5,6 +5,9 @@ This software and pipeline accompany the paper
 using an engineered error-prone DNA polymerase*
 by Wenson et al. (2024)
 
+The initial submission of the paper was done with the software as it was in commit
+[9f645a3](https://github.com/NBISweden/Sloppymerase/tree/9f645a3c4b5e522835a894a0e3f405873978a729).
+
 ## Overview
 
 This repository contains
