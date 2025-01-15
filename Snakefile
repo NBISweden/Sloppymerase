@@ -91,12 +91,14 @@ rule detect_breaks:
         ref=REF,
     log: "{tech}/{name}.breaks.log"
     params:
-        conf=lambda wildcards: config[wildcards.tech]
+        conf=lambda wildcards: config[wildcards.tech],
+        extra=f" --min-average-quality={config[wildcards.tech]['min_average_quality']}" if config[wildcards.tech].get("min_average_quality") is not None else ""
     shell:
         "python detectbreak.py"
         " --output-bam={output.bam}"
         " --min-affected={params.conf[min_affected]}"
         " --min-mismatches={params.conf[min_mismatches]}"
+        "{params.extra}"
         " {input.ref}"
         " {input.bam}"
         " > {output.bed}.tmp"

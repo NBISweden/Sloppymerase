@@ -268,7 +268,7 @@ def run(
         print(f"Done. Processed {n} alignment records in {now - start_time:.1f} s at {rate:.0f} records/s", file=sys.stderr)
 
     def log(n, *args, **kwargs):
-        print(f"{n:7}", *args, **kwargs, file=sys.stderr)
+        print(f"{n:9}", *args, **kwargs, file=sys.stderr)
 
     print("Discarding reads with fewer than", min_passes if min_passes is not None else 0, "passes (np tag)", file=sys.stderr)
     print("Discarding reads with error rate higher than", max_error_rate, file=sys.stderr)

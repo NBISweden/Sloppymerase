@@ -12,3 +12,4 @@ illumina:
   # filtering, so setting min_affected to 0 or 1 gives the same results as 2.
   min_affected: 4
   min_mismatches: 2
+  min_average_quality: 24
