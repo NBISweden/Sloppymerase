@@ -10,5 +10,5 @@ illumina:
   # The (Illumina-specific) read mapping step discard reads with 0 or 1
   # mismatches already. The following thresholds are for *additional*
   # filtering, so setting min_affected to 0 or 1 gives the same results as 2.
-  min_affected: 3
+  min_affected: 4
   min_mismatches: 2
