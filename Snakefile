@@ -158,6 +158,21 @@ rule simulate_nickase:
         " | bgzip"
         " > {output.bed}"
 
+rule sbe_sites:
+    # Smad Binding Element
+    # CAGAC, GGCGC and GGCCG
+    output:
+        bed="sbe-sites.bed.gz"
+    input:
+        ref=REF
+    params:
+        script=Path(workflow.basedir) / "motifs.py"
+    shell:
+        "python {params.script} -m CAGAC -m GGCGC -m GGCCG {input.ref}"
+        " | sort -k1,1 -k2,2n -u"
+        " | bgzip"
+        " > {output.bed}"
+
 rule random_sites:
     output:
         bed="random-sites.bed.gz"
