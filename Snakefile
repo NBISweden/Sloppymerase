@@ -2,7 +2,7 @@ from glob import glob
 
 configfile: "breaks.yaml"
 
-localrules: index_bed, sort_uniq_bed, usable_alignments, count_unique_events, bgzip_bed, subtract_illumina_controls
+localrules: index_bed, sort_uniq_bed, usable_alignments, count_unique_events, intersect_sites, count_intersected, bgzip_bed, subtract_illumina_controls
 
 
 REF = "ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
@@ -185,23 +185,14 @@ rule random_sites:
         " | bgzip"
         " > {output.bed}"
 
-rule intersect_nickase_sites:
+rule intersect_sites:
     output:
-        bed="{tech,(pacbio|illumina|nanopore)}/{name}.nickase-intersected.bed",
+        bed="{tech,(pacbio|illumina|nanopore)}/{name}.{what}-intersected.bed",
     input:
         detected_bed="{tech}/{name}.bed.gz",
-        nickase_bed="nickase-sites.bed.gz",
+        roi_bed="{what}-sites.bed.gz",
     shell:
-        "bedtools window -u -w 10 -header -a {input.detected_bed} -b {input.nickase_bed} > {output.bed}"
-
-rule intersect_random_sites:
-    output:
-        bed="{tech,(pacbio|illumina|nanopore)}/{name}.random-intersected.bed",
-    input:
-        detected_bed="{tech}/{name}.bed.gz",
-        nickase_bed="random-sites.bed.gz",
-    shell:
-        "bedtools window -u -w 10 -header -a {input.detected_bed} -b {input.nickase_bed} > {output.bed}"
+        "bedtools window -u -w 10 -header -a {input.detected_bed} -b {input.roi_bed} > {output.bed}"
 
 rule count_intersected:
     output: txt="stats/{what,(nickase|random)}-intersected/{name}.txt"
