@@ -42,7 +42,6 @@ rule map_illumina:
     threads: 20
     shell:
         "strobealign -t {threads} {input.ref} {input.r1_fastq} {input.r2_fastq} 2> {log.bam}"
-        "| samtools view -h -e '[NM]>1'"
         "| samtools sort -@ 4 -o {output.bam}.tmp.bam 2> {log.sort}"
         " && mv {output.bam}.tmp.bam {output.bam}"
 
