@@ -209,6 +209,13 @@ def run(
                 next_update += UPDATE_INTERVAL
 
             # Filter alignments
+            try:
+                errors = record.get_tag("NM")
+                if errors < 2:
+                    continue
+            except KeyError:
+                pass
+
             if record.is_secondary or record.is_supplementary or record.is_unmapped:
                 stats.filtered_not_primary += 1
                 continue
