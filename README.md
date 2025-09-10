@@ -1,9 +1,8 @@
 # Single-stranded DNA break detection using an engineered error-prone DNA polymerase
 
 This software and pipeline accompany the paper
-*Sequence-templated erroneous end-labelling to map single-stranded DNA breaks,
-using an engineered error-prone DNA polymerase*
-by Wenson et al. (2024)
+*Precise mapping of single-stranded DNA breaks by sequence-templated erroneous DNA polymerase end-labelling*
+by Wenson et al. (2024) [doi:10.1038/s41467-025-62512-4](https://doi.org/10.1038/s41467-025-62512-4)
 
 The initial submission of the paper was done with the software as it was in commit
 [9f645a3](https://github.com/NBISweden/Sloppymerase/tree/9f645a3c4b5e522835a894a0e3f405873978a729).
